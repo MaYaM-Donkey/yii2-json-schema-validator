@@ -82,12 +82,15 @@ class JsonSchemaValidator extends Validator
      */
     public function validateAttribute($model, $attribute)
     {
-        if (!is_string($model->$attribute)) {
+		if (!is_string($attribute)) {
             $this->addError($model, $attribute, $this->notString);
             return;
         }
 
-        $value = json_decode($model->$attribute);
+		$value = json_decode(file_get_contents('php://input'), false);		
+
+		if (!isset($value->$attribute)) return;
+		
         if (json_last_error()) {
             $this->addError($model, $attribute, $this->notJsonString);
         }
@@ -96,7 +99,7 @@ class JsonSchemaValidator extends Validator
         $schema = $retriever->retrieve($this->schema);
 
         $validator = new JSValidator();
-        $validator->check($value, $schema);
+        $validator->check($value->$attribute, $schema);
 
         if (!$validator->isValid()) {
             foreach ($validator->getErrors() as $error) {
@@ -121,6 +124,7 @@ class JsonSchemaValidator extends Validator
      */
     protected function validateValue($value)
     {
+		$value = serialize ($value);
         if (!is_string($value)) {
             return [$this->notString, []];
         }
@@ -144,4 +148,57 @@ class JsonSchemaValidator extends Validator
 
         return null;
     }
+
+/*
+
+    public function validateAttribute($model, $attribute)
+    {
+        if (!is_string($model->$attribute)) {
+            $this->addError($model, $attribute, $this->notString);
+            return;
+        }
+        $value = json_decode($model->$attribute);
+        if (json_last_error()) {
+            $this->addError($model, $attribute, $this->notJsonString);
+        }
+        $retriever = new UriRetriever();
+        $schema = $retriever->retrieve($this->schema);
+        $validator = new JSValidator();
+        $validator->check($value, $schema);
+        if (!$validator->isValid()) {
+            foreach ($validator->getErrors() as $error) {
+                $this->addError(
+                    $model,
+                    $attribute,
+                    $this->message,
+                    [
+                        'property' => $error['property'],
+                        'message' => ucfirst($error['message']),
+                    ]
+                );
+            }
+        }
+    }
+
+    protected function validateValue($value)
+    {
+        if (!is_string($value)) {
+            return [$this->notString, []];
+        }
+        $value = json_decode($value);
+        if (json_last_error()) {
+            return [$this->notJsonString, []];
+        }
+        $retriever = new UriRetriever();
+        $schema = $retriever->retrieve($this->schema);
+        $validator = new JSValidator();
+        $validator->check($value, $schema);
+        if (!$validator->isValid()) {
+            $errors = $validator->getErrors();
+            $error = reset($errors);
+            return [$this->message, ['property' => $error['property'], 'message' => ucfirst($error['message'])]];
+        }
+        return null;
+    }
+*/
 }
